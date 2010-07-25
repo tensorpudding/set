@@ -1,20 +1,22 @@
 package set
 
 import (
-	"rand"
+	"fmt"
+//	"rand"
 	"container/set"
 	"testing"
 )
 
 const (
-	ELEM_TEST_TRIES 1000
+	ELEM_TEST_TRIES = 1000
 )
 
-func TestSetElem (t *testing.T) {
-	s := set.Init()
-	for i := 0; i < ELEM_TEST_TRIES; i++ {
-		p := rand.Int()
-		s.Add(p)
-		if !s.Elem(p) { Fail() }
-	}
+func TestSanity (t *testing.T) {
+	fmt.Printf("this works!\n")
+}
+
+func TestEasy (t *testing.T) {
+	var s *set.IntTreap = new(set.IntTreap)
+//	s := set.Init([]int{})
+	s.Display()
 }

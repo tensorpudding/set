@@ -1,44 +1,121 @@
 package set
 
 import (
+	"fmt"
 	"rand"
 )
 
 type IntSet interface {
- 	Elem(x int) bool
+ 	Init(a []int) *IntSet
  	Add(x int) *IntSet
+ 	Elem(x int) bool
  	Union(y IntSet) *IntSet
  	Intersection(y *IntSet) *IntSet
 	Diff(y *IntSet) *IntSet
- 	Init(a []int) *IntSet
+	Display()
 }
 
 type IntTreap struct {
-	x int // value
-	p int // randomized priority
+	x int           // value
+	p int           // randomized priority
 	left *IntTreap  // left subtreap
 	right *IntTreap // right subtreap
 }
 func Init(a []int) *IntTreap {
-	s := NewIntTreap()
+	var s *IntTreap = nil
 	for i := 0; i < len(a); i++ {
-		s.Add(a[i])
+		s = s.Add(a[i])
 	}
 	return s
 }
 
 func (s *IntTreap) Add(x int) *IntTreap {
-	return s
-// 	if (s.x == x) {
-// 		return s
-// 	} else if (s.x > x) {
-// 		if (s.left == nil) {
-// 			s.left = NewIntTreap()
-// 			s.left.x = x
-// 			s.left.p = rand.Int()
-// 			if (
+	if (s == nil) {
+		s := new(IntTreap)
+		s.x = x
+		s.p = rand.Int()
+		s.left = nil
+		s.right = nil
+		return s
+	}	
+	if (s.x == x) {
+		return s
+	} else if (s.x > x) {
+		if s.left != nil {
+			s.left = s.left.Add(x)
+		} else {
+			s.left = NewIntTreap()
+			s.left.x = x
+			s.left.p = rand.Int()
+			s.left.left = nil
+			s.left.right = nil
+		}
+		if s.left.p > s.p {
+			return RightSwap(s.left, s)
+		} else {
+			return s
+		}
+	} else if (s.x < x) {
+		if s.right != nil {
+			s.right = s.right.Add(x)
+		} else {
+			s.right = NewIntTreap()
+			s.right.x = x
+			s.right.p = rand.Int()
+			s.right.left = nil
+			s.right.right = nil
+		}
+		if s.right.p > s.p {
+			return LeftSwap(s.right, s)
+		} else {
+			return s
+		}
+	}
+	return nil
 }
 
+func (s *IntTreap) Elem(x int) bool {
+	if (s == nil) {
+		return false
+	}
+	if (s.x == x) {
+		return true
+	} else if (s.x > x) {
+		if (s.left == nil) {
+			return false
+		}
+		return s.left.Elem(x)
+	} else {
+		if (s.right == nil) {
+			return false
+		}
+		return s.right.Elem(x)
+	}
+	return false
+}
+
+/* RightSwap
+ * When the pivot is to the left of the root, do a left tree rotation
+ */
+func RightSwap(pivot *IntTreap, root *IntTreap) *IntTreap {
+	root.left = pivot.right
+	pivot.right = root
+	return pivot
+}
+
+/* LeftSwap
+ * When the pivot is to the right of the root, do a right tree rotation
+ */
+func LeftSwap(pivot *IntTreap, root *IntTreap) *IntTreap {
+	root.right = pivot.left
+	pivot.left = root
+	return pivot
+}
+
+/* Split
+ * Split the treap by a key k, the left tree is all keys < k,
+ * the right tree is all keys > k
+ */
 func (s *IntTreap) Split(k int) (*IntTreap, int, *IntTreap) {
 	if (s == nil) {
 		return nil, 0, nil
@@ -51,6 +128,7 @@ func (s *IntTreap) Split(k int) (*IntTreap, int, *IntTreap) {
 		Tr := NewIntTreap()
 		Tr.left = T2
 		Tr.x = s.x
+		Tr.p = s.p
 		Tr.right = s.right
 		return Tl, m, Tr
 	}
@@ -59,6 +137,7 @@ func (s *IntTreap) Split(k int) (*IntTreap, int, *IntTreap) {
 		Tl := NewIntTreap()
 		Tl.left = s.left
 		Tl.x = s.x
+		Tl.p = s.p
 		Tl.right = T2
 		return Tl, m, Tr
 	}
@@ -75,6 +154,7 @@ func (s *IntTreap) Join(t *IntTreap) *IntTreap {
 		tnew := NewIntTreap()
 		tnew.left = s.left
 		tnew.x = s.x
+		tnew.p = s.p
 		tnew.right = tr
 		return tnew
 	} else {
@@ -82,63 +162,93 @@ func (s *IntTreap) Join(t *IntTreap) *IntTreap {
 		tnew := NewIntTreap()
 		tnew.left = tl
 		tnew.x = t.x
+		tnew.p = t.p
 		tnew.right = t.right
 		return tnew
 	}
 	return nil
 }
 
+/* Union
+ * Takes the union of s and t
+ * Destructive?
+ */
+func (s *IntTreap) Union(t *IntTreap) *IntTreap {
+	u := new(IntTreap)
+	if (s == nil) { return t }
+	if (t == nil) { return s }
+
+	if (s.p < t.p) {
+		temp := t
+		t = s
+		s = temp
+	}
+
+	Tl, _, Tr := t.Split(s.x)
+	u.x = s.x
+	u.p = s.p
+	u.left = s.left.Union(Tl)
+	u.right = s.right.Union(Tr)
+	return u
+}
+
+// broken goroutine version
+
 // func (s *IntTreap) Union(t *IntTreap) *IntTreap {
-// 	u := NewIntTreap()
-// 	if (s == nil) { return t }
-// 	if (t == nil) { return s }
-	
-// 	if (s.p < t.p) Swap(s, t)
-// 	less, x, gtr := t.Split(s.x)
-// 	u.x = s.x
-// 	u.p = s.p
-// 	u.left = s.left.Union(less)
-// 	u.right = s.right.Union(gtr)
+// 	ch := make(chan *IntTreap)
+// 	go s.UnionHelper(t, ch)
+// 	u := <- ch
 // 	return u
 // }
 
-// func (s *IntTreap) Intersection(t *IntTreap) *IntTreap {
-// 	i := NewIntTreap()
-// 	if (s == nil) { return nil }
-// 	if (t == nil) { return nil }
+// func (s *IntTreap) UnionHelper(t *IntTreap, ch chan *IntTreap) {
+// 	u := new(IntTreap)
+// 	if (s == nil) { ch <- t }
+// 	if (t == nil) { ch <- s }
 
-// 	if (s.p < t.p) Swap(s, t)
-// 	less, x, gtr := t.Split(s.x)
-
-// }
-
-// func Swap(s *IntTreap, t *IntTreap) *IntTreap {
-// 	pivot := t
-// 	root 
+// 	if (s.p >= t.p) {
+// 		Tl, _, Tr := t.Split(s.x)
+// 		u.x = s.x
+// 		u.p = s.p
+// 		chl := make(chan *IntTreap)
+// 		chr := make(chan *IntTreap)
+// 		go s.left.UnionHelper(Tl, chl)
+// 		go s.right.UnionHelper(Tr, chr)
+// 		u.left = <-chl
+// 		u.right = <-chr
+// 		ch <- u
+// 	} else {
+// 		Sl, _, Sr := s.Split(t.x)
+// 		u.x = t.x
+// 		u.p = t.p
+// 		chl := make(chan *IntTreap)
+// 		chr := make(chan *IntTreap)
+// 		go t.left.UnionHelper(Sl, chl)
+// 		go t.right.UnionHelper(Sr, chr)
+// 		u.left = <-chl
+// 		u.right = <-chr
+// 		ch <- u
+// 	}
 // }
 
 func NewIntTreap() *IntTreap {
-	t:= new(IntTreap)
-	t.x = 0
-	t.p = rand.Int()
-	t.left = nil
-	t.right = nil
-	return t
+	return new(IntTreap)
 }
 
-func (s *IntTreap) Elem(x int) bool {
-	if (s.x == x) {
-		return true
-	} else if (s.x > x) {
-		if (s.left == nil) {
-			return false
-		}
-		return s.left.Elem(x)
-	} else {
-		if (s.right == nil) {
-			return false
-		}
-		return s.right.Elem(x)
+func NewIntLeaf(x int) *IntTreap {
+	l := new(IntTreap)
+	l.x = x
+	l.p = rand.Int()
+	l.left = nil
+	l.right = nil
+	return l
+}
+
+// debugging, remove after
+func (s *IntTreap) Display() {
+	if s != nil {
+		s.left.Display()
+		fmt.Printf("%d ", s.x)
+		s.right.Display()
 	}
-	return false
 }
