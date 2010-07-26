@@ -1,3 +1,4 @@
+// The set package implements efficient integer sets
 package set
 
 import (
@@ -5,13 +6,32 @@ import (
 	"rand"
 )
 
+// IntSet provides an interface for general integer set operations.
 type IntSet interface {
+	// Initialize the set with elements from an array slice.
+	// Duplicates are ignored, of course.
  	Init(a []int) *IntSet
- 	Add(x int) *IntSet
+
+	// Insert a new element into the set.
+	// Non-destructive at the moment.
+ 	Insert(x int) *IntSet
+
+	// Tests whether the given element is contained in the set.
  	Elem(x int) bool
+
+	// Takes the union of the two sets, non-destructive.
  	Union(y IntSet) *IntSet
- 	Intersection(y *IntSet) *IntSet
+
+	// Union (parallel version!)
+	UnionPar(y IntSet) *IntSet
+	
+	// Takes the intersection of the two sets, non-destructive.
+	Intersection(y *IntSet) *IntSet
+
+	// Takes the set difference of the two sets.
 	Diff(y *IntSet) *IntSet
+
+	// remove me
 	Display()
 }
 
@@ -24,12 +44,12 @@ type IntTreap struct {
 func Init(a []int) *IntTreap {
 	var s *IntTreap = nil
 	for i := 0; i < len(a); i++ {
-		s = s.Add(a[i])
+		s = s.Insert(a[i])
 	}
 	return s
 }
 
-func (s *IntTreap) Add(x int) *IntTreap {
+func (s *IntTreap) Insert(x int) *IntTreap {
 	if (s == nil) {
 		s := new(IntTreap)
 		s.x = x
@@ -42,7 +62,7 @@ func (s *IntTreap) Add(x int) *IntTreap {
 		return s
 	} else if (s.x > x) {
 		if s.left != nil {
-			s.left = s.left.Add(x)
+			s.left = s.left.Insert(x)
 		} else {
 			s.left = NewIntTreap()
 			s.left.x = x
@@ -57,7 +77,7 @@ func (s *IntTreap) Add(x int) *IntTreap {
 		}
 	} else if (s.x < x) {
 		if s.right != nil {
-			s.right = s.right.Add(x)
+			s.right = s.right.Insert(x)
 		} else {
 			s.right = NewIntTreap()
 			s.right.x = x
@@ -194,42 +214,50 @@ func (s *IntTreap) Union(t *IntTreap) *IntTreap {
 
 // broken goroutine version
 
-// func (s *IntTreap) Union(t *IntTreap) *IntTreap {
-// 	ch := make(chan *IntTreap)
-// 	go s.UnionHelper(t, ch)
-// 	u := <- ch
-// 	return u
-// }
+func (s *IntTreap) UnionPar(t *IntTreap) *IntTreap {
+	ch := make(chan *IntTreap)
+	if (s == nil) { return t }
+	if (t == nil) { return s }
+	go s.UnionHelper(t, ch)
+	u := <- ch
+	return u
+}
 
-// func (s *IntTreap) UnionHelper(t *IntTreap, ch chan *IntTreap) {
-// 	u := new(IntTreap)
-// 	if (s == nil) { ch <- t }
-// 	if (t == nil) { ch <- s }
-
-// 	if (s.p >= t.p) {
-// 		Tl, _, Tr := t.Split(s.x)
-// 		u.x = s.x
-// 		u.p = s.p
-// 		chl := make(chan *IntTreap)
-// 		chr := make(chan *IntTreap)
-// 		go s.left.UnionHelper(Tl, chl)
-// 		go s.right.UnionHelper(Tr, chr)
-// 		u.left = <-chl
-// 		u.right = <-chr
-// 		ch <- u
-// 	} else {
-// 		Sl, _, Sr := s.Split(t.x)
-// 		u.x = t.x
-// 		u.p = t.p
+func (s *IntTreap) UnionHelper(t *IntTreap, ch chan *IntTreap) {
+	u := new(IntTreap)
+	if (s == nil) {
+		ch <- t
+	} else if (t == nil) {
+		ch <- s
+	} else if (s.p >= t.p) {
+		Tl, _, Tr := t.Split(s.x)
+		u.x = s.x
+		u.p = s.p
+//		chl := make(chan *IntTreap)
+//		chr := make(chan *IntTreap)
+//		go s.left.UnionHelper(Tl, chl)
+//		go s.right.UnionHelper(Tr, chr)
+//		u.left = <-chl
+//		u.right = <-chr
+		u.left = s.left.Union(Tl)
+		u.right = s.right.Union(Tr)
+		ch <- u
+	} else {
+		Sl, _, Sr := s.Split(t.x)
+		u.x = t.x
+		u.p = t.p
 // 		chl := make(chan *IntTreap)
 // 		chr := make(chan *IntTreap)
 // 		go t.left.UnionHelper(Sl, chl)
 // 		go t.right.UnionHelper(Sr, chr)
 // 		u.left = <-chl
 // 		u.right = <-chr
-// 		ch <- u
-// 	}
-// }
+		u.left = s.left.Union(Sl)
+		u.right = s.right.Union(Sr)
+		ch <- u
+	}
+}
+
 
 func NewIntTreap() *IntTreap {
 	return new(IntTreap)
